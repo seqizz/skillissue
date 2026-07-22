@@ -1,0 +1,30 @@
+# skillissue config. Copy to ~/.config/skillissue/config.yaml (or point at it
+# with --config). Paths accept ~ and $VAR / ${VAR} expansion.
+
+# Where repos are cloned. Optional, this is the default.
+cache_dir: ~/.local/cache/skillissue
+
+# Warn when a skill folder name differs from its frontmatter name:. Optional,
+# default false. Harmless for Claude (folder name is the id); enable only if you
+# target agents like crush that require folder name == name:.
+warn_name_mismatch: false
+
+# Commit message used when auto-committing agent edits in writable repos.
+# Optional, this is the default.
+commit_message: "skillissue: sync agent edits"
+
+# Agent skill directories to link discovered skills into. At least one required.
+skill_paths:
+  - ~/.claude/skills
+  - ~/.agent/skills
+
+# Upstream skill repos. At least one required.
+repos:
+  # Your own repo: writable so agent edits are committed and pushed back.
+  - url: git@github.com:me/my-skills.git
+    ref: main          # optional; default = remote HEAD
+    writable: true     # optional; default false (pull-only)
+
+  # A third-party repo, pull-only. Skills live under a subdir of the clone.
+  - url: https://github.com/someone/awesome-skills.git
+    subdir: skills     # optional; scope discovery to this path in the clone
