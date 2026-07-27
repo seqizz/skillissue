@@ -64,27 +64,47 @@ func IsDirty(dir string) (bool, error) {
 }
 
 // CommitAll stages every change and commits with msg. It is a no-op on a clean
-// tree. Returns whether a commit was actually made.
-func CommitAll(dir, msg string) (bool, error) {
+// tree. Returns whether a commit was actually made and the list of changed files.
+func CommitAll(dir, msg string) (bool, []string, error) {
 	dirty, err := IsDirty(dir)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if !dirty {
-		return false, nil
+		return false, nil, nil
 	}
+
+	// Get list of changed files before committing
+	files, err := ChangedFiles(dir)
+	if err != nil {
+		return false, nil, err
+	}
+
 	if DryRun {
 		dryLog("-C", dir, "add", "-A")
 		dryLog("-C", dir, "commit", "-m", msg)
-		return true, nil
+		return true, files, nil
 	}
 	if _, err := run(dir, "add", "-A"); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if _, err := run(dir, "commit", "-m", msg); err != nil {
-		return false, err
+		return false, nil, err
 	}
-	return true, nil
+	return true, files, nil
+}
+
+// ChangedFiles returns a list of paths that have changed in the working tree.
+// It uses git diff --name-only to show all modified, added, or deleted files.
+func ChangedFiles(dir string) ([]string, error) {
+	out, err := run(dir, "diff", "--name-only")
+	if err != nil {
+		return nil, err
+	}
+	if out == "" {
+		return []string{}, nil
+	}
+	return strings.Split(out, "\n"), nil
 }
 
 // AheadBehind returns how many commits the local branch is behind and ahead of

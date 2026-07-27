@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gurkan/skillissue/internal/config"
 	"github.com/gurkan/skillissue/internal/git"
@@ -59,10 +60,15 @@ func syncRepo(c *config.Config, r config.Repo, diverged *[]string) error {
 	}
 
 	if r.Writable {
-		if committed, err := git.CommitAll(dir, c.CommitMessage); err != nil {
+		if committed, files, err := git.CommitAll(dir, c.CommitMessage); err != nil {
 			return err
 		} else if committed {
-			fmt.Printf("%s: committed local edits\n", r.URL)
+			skills := extractSkillNames(files, c.SkillRoot(r))
+			if len(skills) > 0 {
+				fmt.Printf("%s: committed local edits (%s)\n", r.URL, formatSkills(skills))
+			} else {
+				fmt.Printf("%s: committed local edits\n", r.URL)
+			}
 		}
 	}
 
@@ -95,5 +101,49 @@ func syncRepo(c *config.Config, r config.Repo, diverged *[]string) error {
 	default:
 		fmt.Printf("%s: up to date\n", r.URL)
 		return nil
+	}
+}
+
+// extractSkillNames extracts unique skill directory names from a list of changed file paths.
+// The file paths are relative to the skill root, so we just need to extract the first component.
+func extractSkillNames(files []string, skillRoot string) []string {
+	skillSet := make(map[string]bool)
+	for _, file := range files {
+		// File paths are relative to the skill root.
+		// Extract the first directory component (the skill name).
+		if idx := strings.Index(file, "/"); idx >= 0 {
+			skillSet[file[:idx]] = true
+		}
+		// If there's no "/", the file is directly in the skill root, not a skill.
+	}
+	// Convert to sorted slice
+	skills := make([]string, 0, len(skillSet))
+	for skill := range skillSet {
+		skills = append(skills, skill)
+	}
+	// Sort for consistent output
+	for i := 0; i < len(skills); i++ {
+		for j := i + 1; j < len(skills); j++ {
+			if skills[i] > skills[j] {
+				skills[i], skills[j] = skills[j], skills[i]
+			}
+		}
+	}
+	return skills
+}
+
+// formatSkills formats a list of skill names for display.
+// With 1-2 skills: shows "skill1" or "skill1, skill2"
+// With 3+ skills: shows "skill1, skill2, and 2 more"
+func formatSkills(skills []string) string {
+	switch len(skills) {
+	case 0:
+		return ""
+	case 1:
+		return skills[0]
+	case 2:
+		return skills[0] + ", " + skills[1]
+	default:
+		return skills[0] + ", " + skills[1] + ", and " + fmt.Sprintf("%d more", len(skills)-2)
 	}
 }
