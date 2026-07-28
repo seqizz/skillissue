@@ -107,6 +107,32 @@ func ChangedFiles(dir string) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+// StatusFiles returns all dirty paths reported by git status --porcelain,
+// including untracked files. Each entry is the file path only (XY prefix stripped).
+func StatusFiles(dir string) ([]string, error) {
+	out, err := run(dir, "status", "--porcelain")
+	if err != nil {
+		return nil, err
+	}
+	if out == "" {
+		return []string{}, nil
+	}
+	lines := strings.Split(out, "\n")
+	paths := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if len(l) < 4 {
+			continue
+		}
+		// porcelain format: "XY path" or "XY old -> new" for renames
+		path := strings.TrimSpace(l[3:])
+		if i := strings.Index(path, " -> "); i >= 0 {
+			path = path[i+4:]
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
+}
+
 // AheadBehind returns how many commits the local branch is behind and ahead of
 // its upstream. hasUpstream is false when no upstream is configured (e.g. a
 // detached ref), in which case the counts are meaningless.

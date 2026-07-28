@@ -69,6 +69,17 @@ func syncRepo(c *config.Config, r config.Repo, diverged *[]string) error {
 			} else {
 				fmt.Printf("%s: committed local edits\n", r.URL)
 			}
+			if extra := nonSkillFiles(files); len(extra) > 0 {
+				fmt.Fprintf(os.Stderr, "warning: %s: committed non-SKILL.md files: %s\n", r.URL, strings.Join(extra, ", "))
+			}
+		}
+	} else {
+		// Non-writable: warn if local changes exist — skillissue won't commit them.
+		if dirty, err := git.IsDirty(dir); err != nil {
+			return err
+		} else if dirty {
+			files, _ := git.StatusFiles(dir)
+			fmt.Fprintf(os.Stderr, "warning: %s: non-writable repo has local changes: %s\n", r.URL, strings.Join(files, ", "))
 		}
 	}
 
@@ -130,6 +141,18 @@ func extractSkillNames(files []string, skillRoot string) []string {
 		}
 	}
 	return skills
+}
+
+// nonSkillFiles returns paths from files that are not a SKILL.md within a skill
+// directory. These represent unexpected changes bundled into the auto-commit.
+func nonSkillFiles(files []string) []string {
+	var result []string
+	for _, f := range files {
+		if !strings.HasSuffix(f, "/SKILL.md") {
+			result = append(result, f)
+		}
+	}
+	return result
 }
 
 // formatSkills formats a list of skill names for display.
