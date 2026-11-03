@@ -15,11 +15,11 @@ var DryRun bool
 
 // Report accumulates what Sync did, for a human-readable summary.
 type Report struct {
-	Created  []string // "skillpath/name -> target"
+	Created   []string // "skillpath/name -> target"
 	Repointed []string
-	Removed  []string // stale owned links GC'd
-	Foreign  []string // untouched non-owned entries that collide with a skill name
-	Warnings []string
+	Removed   []string // stale owned links GC'd
+	Foreign   []string // untouched non-owned entries that collide with a skill name
+	Warnings  []string
 }
 
 // Sync makes every skill_path contain an up-to-date symlink for each skill in

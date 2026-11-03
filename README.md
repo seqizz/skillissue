@@ -51,6 +51,13 @@ skillissue status    # show repo state, discovered skills, collisions (read-only
 Global flags: `--config <path>`, `--dry-run` (print intended actions, change
 nothing).
 
+`update` and `link` also take `--prune-cache` (or `prune_cache: true` in the
+config), which deletes cache clones of repos that are no longer configured.
+Without it they are kept forever: the link phase only walks `skill_paths` and
+never cleans `cache_dir`. A clone with uncommitted changes, unpushed commits or
+no upstream is kept and reported instead of removed, and anything in the cache
+that is not a git working tree is left alone.
+
 ### `update` per-repo logic
 
 1. Clone if missing.
@@ -70,6 +77,11 @@ A symlink in a skill directory is considered owned by skillissue if it resolves
 into `cache_dir`. Only owned links are repointed or garbage-collected. Real
 files and foreign symlinks are never touched (they are reported so you notice
 collisions with your own skills).
+
+`--prune-cache` works on the other side of that boundary: it removes clone
+directories under `cache_dir` itself, and only direct children that are git
+working trees. It runs before the link phase, so links into a removed clone are
+already dangling and get garbage-collected in the same run.
 
 ## Scope
 

@@ -172,6 +172,17 @@ func FastForward(dir string) error {
 	return err
 }
 
+// Rebase rebases the current branch onto its upstream. Returns an error if
+// the rebase fails (e.g. due to conflicts).
+func Rebase(dir string) error {
+	if DryRun {
+		dryLog("-C", dir, "rebase", "@{u}")
+		return nil
+	}
+	_, err := run(dir, "rebase", "@{u}")
+	return err
+}
+
 // Push pushes the current branch to its upstream.
 func Push(dir string) error {
 	if DryRun {

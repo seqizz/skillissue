@@ -14,7 +14,8 @@ var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Clone/pull/commit/push all repos, then relink skills",
 	Long: "For each repo: commit local edits (if writable), fetch, fast-forward " +
-		"when the remote is ahead, push when the local is ahead. Diverged repos " +
+		"when the remote is ahead, push when the local is ahead, and rebase when " +
+		"both have moved (only for writable repos). Diverged non-writable repos " +
 		"are left untouched and reported. Finally relinks all skills.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c, err := loadConfig()
@@ -27,6 +28,12 @@ var updateCmd = &cobra.Command{
 			if err := syncRepo(c, r, &diverged); err != nil {
 				// A single repo failure should not abort the whole run.
 				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", r.URL, err)
+			}
+		}
+
+		if wantPruneCache(c) {
+			if err := runPruneCache(c); err != nil {
+				return err
 			}
 		}
 
@@ -106,7 +113,10 @@ func syncRepo(c *config.Config, r config.Repo, diverged *[]string) error {
 	case ahead > 0 && behind == 0 && !r.Writable:
 		fmt.Printf("%s: local ahead by %d but repo is not writable, not pushing\n", r.URL, ahead)
 		return nil
-	case behind > 0 && ahead > 0:
+	case behind > 0 && ahead > 0 && r.Writable:
+		fmt.Printf("%s: diverged (behind %d, ahead %d), rebasing\n", r.URL, behind, ahead)
+		return git.Rebase(dir)
+	case behind > 0 && ahead > 0 && !r.Writable:
 		*diverged = append(*diverged, r.URL)
 		return nil
 	default:

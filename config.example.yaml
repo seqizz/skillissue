@@ -13,6 +13,13 @@ warn_name_mismatch: false
 # Optional, this is the default.
 commit_message: "skillissue: sync agent edits"
 
+# Remove cache clones of repos that are no longer listed below. Optional,
+# default false. Useful when repo membership changes on its own (a generated
+# config, a profile switch) rather than by hand. Clones with uncommitted
+# changes, unpushed commits, or no upstream are kept and reported either way.
+# Per-run equivalent: skillissue link --prune-cache
+prune_cache: false
+
 # Agent skill directories to link discovered skills into. At least one required.
 skill_paths:
   - ~/.claude/skills

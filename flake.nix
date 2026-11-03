@@ -20,7 +20,7 @@
       {
         packages.default = pkgs.buildGoModule {
           pname = "skillissue";
-          version = "0.1.0";
+          version = "0.1.1";
           src = ./.;
           # Deps are vendored in ./vendor, so no network fetch / vendor hash needed.
           vendorHash = null;

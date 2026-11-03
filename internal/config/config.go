@@ -32,6 +32,10 @@ type Config struct {
 	WarnNameMismatch bool `yaml:"warn_name_mismatch"`
 	// CommitMessage is used when auto-committing agent edits in writable repos.
 	CommitMessage string `yaml:"commit_message"`
+	// PruneCache removes cache clones of repos that are no longer configured.
+	// Off by default: deleting a clone is the only destructive thing skillissue
+	// can do, so it is opt-in per config or per run (--prune-cache).
+	PruneCache bool `yaml:"prune_cache"`
 }
 
 const (

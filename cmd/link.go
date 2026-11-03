@@ -11,6 +11,11 @@ var linkCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		if wantPruneCache(c) {
+			if err := runPruneCache(c); err != nil {
+				return err
+			}
+		}
 		return runLinkPhase(c)
 	},
 }
