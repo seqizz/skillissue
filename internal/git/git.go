@@ -12,14 +12,61 @@ import (
 // print the intended command instead of executing it.
 var DryRun bool
 
+// netTimeoutSecs is how long a remote may stay unreachable or silent before a
+// network operation gives up.
+const netTimeoutSecs = 10
+
 // run executes git in dir and returns trimmed stdout. Stderr is folded into the
 // error message so callers get git's own diagnostics.
 func run(dir string, args ...string) (string, error) {
-	full := args
-	if dir != "" {
-		full = append([]string{"-C", dir}, args...)
+	return execGit(dir, nil, nil, args...)
+}
+
+// runNet is run for commands that talk to a remote (clone/fetch/push). It
+// bounds how long an unreachable or stalled upstream can block, since repos are
+// synced sequentially and one hung remote would otherwise hold up all the rest.
+//
+// The limit is on inactivity, not on total runtime, so a large but healthy
+// clone is not cut off:
+//   - ssh: ConnectTimeout covers the connection attempt, ServerAlive* covers a
+//     session that goes silent afterwards (interval * count = netTimeoutSecs).
+//   - http(s): curl aborts when the transfer stays below 1 byte/s for
+//     netTimeoutSecs.
+func runNet(dir string, args ...string) (string, error) {
+	global := []string{
+		"-c", "http.lowSpeedLimit=1",
+		"-c", fmt.Sprintf("http.lowSpeedTime=%d", netTimeoutSecs),
 	}
+	sshCmd := fmt.Sprintf("%s -o ConnectTimeout=%d -o ServerAliveInterval=%d -o ServerAliveCountMax=%d",
+		sshCommand(dir), netTimeoutSecs, netTimeoutSecs/2, 2)
+	env := append(os.Environ(), "GIT_SSH_COMMAND="+sshCmd)
+	return execGit(dir, global, env, args...)
+}
+
+// sshCommand returns the ssh command git would use on its own, so that adding
+// timeout options through GIT_SSH_COMMAND does not discard a custom one (the
+// environment variable takes precedence over core.sshCommand).
+func sshCommand(dir string) string {
+	if v := os.Getenv("GIT_SSH_COMMAND"); v != "" {
+		return v
+	}
+	// Exits non-zero when the key is unset, which simply means the default.
+	if v, err := run(dir, "config", "--get", "core.sshCommand"); err == nil && v != "" {
+		return v
+	}
+	return "ssh"
+}
+
+// execGit runs git with optional global options (placed before the subcommand)
+// and an optional environment (nil inherits the current one).
+func execGit(dir string, global, env []string, args ...string) (string, error) {
+	full := append([]string{}, global...)
+	if dir != "" {
+		full = append(full, "-C", dir)
+	}
+	full = append(full, args...)
 	cmd := exec.Command("git", full...)
+	cmd.Env = env
 	var out, errBuf strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -44,13 +91,13 @@ func Clone(url, ref, dst string) error {
 		dryLog(args...)
 		return nil
 	}
-	_, err := run("", args...)
+	_, err := runNet("", args...)
 	return err
 }
 
 // Fetch updates remote-tracking refs and prunes deleted ones.
 func Fetch(dir string) error {
-	_, err := run(dir, "fetch", "--prune")
+	_, err := runNet(dir, "fetch", "--prune")
 	return err
 }
 
@@ -189,7 +236,7 @@ func Push(dir string) error {
 		dryLog("-C", dir, "push")
 		return nil
 	}
-	_, err := run(dir, "push")
+	_, err := runNet(dir, "push")
 	return err
 }
 
