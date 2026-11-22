@@ -26,10 +26,18 @@
           vendorHash = null;
 
           # skillissue shells out to the git binary at runtime.
-          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeBuildInputs = [
+            pkgs.makeWrapper
+            pkgs.installShellFiles
+          ];
           postInstall = ''
             wrapProgram $out/bin/skillissue \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.git ]}
+
+            # Lands in share/zsh/site-functions, which NixOS and Home Manager
+            # put on fpath for installed packages.
+            installShellCompletion --cmd skillissue \
+              --zsh <($out/bin/skillissue completion zsh)
           '';
 
           meta = with pkgs.lib; {

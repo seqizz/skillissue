@@ -25,6 +25,17 @@ nix profile install  # install into your profile
 
 `nix develop` drops you into a shell with go, gopls, and git.
 
+### Zsh completion
+
+The Nix package installs it to `share/zsh/site-functions/_skillissue`, nothing
+else to do. For a plain Go build, generate it into a directory on your `fpath`:
+
+```
+skillissue completion zsh > ~/.zsh/completions/_skillissue
+```
+
+Or load it for the current shell only: `source <(skillissue completion zsh)`.
+
 Either way skillissue shells out to the `git` binary at runtime; auth uses your
 ssh-agent / git credential helpers / `~/.gitconfig`.
 

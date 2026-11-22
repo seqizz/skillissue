@@ -51,6 +51,13 @@ func init() {
 		c.Flags().BoolVar(&pruneCache, "prune-cache", false, "also remove cache clones of repos no longer in the config")
 	}
 	rootCmd.AddCommand(updateCmd, linkCmd, statusCmd)
+
+	// Shell completion hints: --config takes a YAML file, and the subcommands
+	// take no positional arguments, so file name candidates would only be noise.
+	_ = rootCmd.MarkPersistentFlagFilename("config", "yaml", "yml")
+	for _, c := range []*cobra.Command{updateCmd, linkCmd, statusCmd} {
+		c.ValidArgsFunction = cobra.NoFileCompletions
+	}
 }
 
 // loadConfig is shared by all subcommands.
